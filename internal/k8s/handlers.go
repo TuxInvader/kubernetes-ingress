@@ -154,6 +154,7 @@ func createSecretHandlers(lbc *LoadBalancerController) cache.ResourceEventHandle
 		AddFunc: func(obj interface{}) {
 			secret := obj.(*v1.Secret)
 			if err := lbc.ValidateSecret(secret); err != nil {
+				glog.V(3).Infof("Error validating secret %v: %v", secret.Name, err)
 				return
 			}
 			glog.V(3).Infof("Adding Secret: %v", secret.Name)
@@ -174,6 +175,7 @@ func createSecretHandlers(lbc *LoadBalancerController) cache.ResourceEventHandle
 				}
 			}
 			if err := lbc.ValidateSecret(secret); err != nil {
+				glog.V(3).Infof("Error validating secret %v: %v", secret.Name, err)
 				return
 			}
 
@@ -181,9 +183,11 @@ func createSecretHandlers(lbc *LoadBalancerController) cache.ResourceEventHandle
 			lbc.AddSyncQueue(obj)
 		},
 		UpdateFunc: func(old, cur interface{}) {
+			curSecret := cur.(*v1.Secret)
 			errOld := lbc.ValidateSecret(old.(*v1.Secret))
-			errCur := lbc.ValidateSecret(cur.(*v1.Secret))
+			errCur := lbc.ValidateSecret(curSecret)
 			if errOld != nil && errCur != nil {
+				glog.V(3).Infof("Error validating secret %v: %v", curSecret.Name, errCur)
 				return
 			}
 

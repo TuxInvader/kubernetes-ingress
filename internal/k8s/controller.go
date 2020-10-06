@@ -3302,21 +3302,25 @@ func (lbc *LoadBalancerController) isHealthCheckEnabled(ing *networking.Ingress)
 	return false
 }
 
-// ValidateSecret validates that the secret follows the TLS Secret format.
-// For NGINX Plus, it also checks if the secret follows the JWK Secret format.
-func (lbc *LoadBalancerController) ValidateSecret(secret *api_v1.Secret) error {
-	err1 := ValidateTLSSecret(secret)
-	if !lbc.isNginxPlus {
-		return err1
+// ValidateSecret validates that the secret follows the TLS, MTLS or JWK Secret format.
+func (lbc *LoadBalancerController) ValidateSecret(secret *api_v1.Secret) (err error) {
+	kind, _ := GetSecretKind(secret)
+
+	switch kind {
+	case TLS:
+		err = ValidateTLSSecret(secret)
+	case IngressMTLS:
+		err = ValidateIngressMTLSSecret(secret)
+	case JWK:
+		if !lbc.isNginxPlus {
+			return
+		}
+		err = ValidateJWKSecret(secret)
+	default:
+		err = fmt.Errorf("Secret is not a TLS, JWK or MTLS secret")
 	}
 
-	err2 := ValidateJWKSecret(secret)
-
-	if err1 == nil || err2 == nil {
-		return nil
-	}
-
-	return fmt.Errorf("Secret is not a TLS or JWK secret")
+	return err
 }
 
 // getMinionsForHost returns a list of all minion ingress resources for a given master
